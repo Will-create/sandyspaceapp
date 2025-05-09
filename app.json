@@ -1,0 +1,47 @@
+{
+  "expo": {
+    "name": "bolt-expo-nativewind",
+    "slug": "bolt-expo-nativewind",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "myapp",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/images/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#400605"
+    },
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Cette application nécessite l'accès à votre appareil photo pour prendre des photos de produits.",
+        "NSPhotoLibraryUsageDescription": "Cette application nécessite l'accès à votre galerie pour sélectionner des photos de produits."
+      }
+    },
+    "android": {
+      "permissions": ["CAMERA", "READ_EXTERNAL_STORAGE", "WRITE_EXTERNAL_STORAGE"]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/images/icon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-web-browser",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Cette application nécessite l'accès à votre galerie pour sélectionner des photos de produits.",
+          "cameraPermission": "Cette application nécessite l'accès à votre appareil photo pour prendre des photos de produits."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
