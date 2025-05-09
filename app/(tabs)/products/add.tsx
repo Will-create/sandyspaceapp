@@ -16,7 +16,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Camera, Trash2, RefreshCw, Check, Plus, Minus, Tag } from 'lucide-react-native';
 import { Product, ProductVariant } from '@/types';
 import { pickImage } from '@/lib/utils';
-import { uploadImage } from '@/lib/api';
+import { uploadImage, uploadProductToSandySpace} from '@/lib/api';
 import { generateProductInfo } from '@/lib/ai';
 import { generateId } from '@/lib/utils';
 import { saveProduct } from '@/lib/storage';
@@ -203,11 +203,11 @@ export default function AddProductScreen() {
     try {
       // Upload image to get URL
       setIsUploading(true);
-      const uploadResult = await uploadImage(imageUri);
+      const imageUploadResult = await uploadImage(imageUri);
       setIsUploading(false);
       
-      if (!uploadResult.success || !uploadResult.url) {
-        throw new Error(uploadResult.error || 'Échec de l\'upload de l\'image');
+      if (!imageUploadResult.success || !imageUploadResult.url) {
+        throw new Error(imageUploadResult.error || 'Échec de l\'upload de l\'image');
       }
       
       // Parse base price
@@ -219,7 +219,7 @@ export default function AddProductScreen() {
         categoryId: category || '1',
         name: productName,
         description: description || `Produit ${productName}`,
-        imageUri: uploadResult.url,
+        imageUri: imageUploadResult.url,
         base64Image: base64Image,
         price: price,
         cost: parseFloat(cost) || 0,
@@ -240,10 +240,45 @@ export default function AddProductScreen() {
       // Save to local storage
       await saveProduct(newProduct);
       
+      // Collect all image URIs for upload
+      const allImageUris = [imageUri];
+      
+      // Add variant images if they exist
+      variants.forEach(variant => {
+        if (variant.imageUri) {
+          allImageUris.push(variant.imageUri);
+        }
+      });
+      
+      // Upload product to SandySpace API
+      const apiUploadResult = await uploadProductToSandySpace(newProduct, allImageUris);
+      
+      if (!apiUploadResult.success) {
+        console.warn('Product saved locally but failed to upload to SandySpace:', apiUploadResult.error);
+        Alert.alert(
+          'Sauvegarde partielle',
+          'Le produit a été sauvegardé localement mais n\'a pas pu être envoyé au serveur. Vous pourrez le synchroniser plus tard.',
+          [
+            {
+              text: 'OK',
+              onPress: () => router.back()
+            }
+          ]
+        );
+        return;
+      }
+      
+      // Update product as uploaded
+      const updatedProduct = {
+        ...newProduct,
+        uploaded: true
+      };
+      await saveProduct(updatedProduct);
+      
       // Success feedback
       Alert.alert(
         'Succès',
-        'Le produit a été sauvegardé avec succès',
+        'Le produit a été sauvegardé et envoyé au serveur avec succès',
         [
           {
             text: 'OK',

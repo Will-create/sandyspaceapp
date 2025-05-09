@@ -191,6 +191,84 @@ export const uploadProductToSandySpace = async (
       });
     }
     
+    // Handle variants
+    if (product.variants && product.variants.length > 0) {
+      // Set is_variant flag
+      formData.append('is_variant', '1');
+      
+      // Group variants by type
+      const variantsByType: Record<string, string[]> = {};
+      
+      product.variants.forEach(variant => {
+        const typeName = variant.type === 'color' ? 'Couleur' : 'Taille';
+        
+        if (!variantsByType[typeName]) {
+          variantsByType[typeName] = [];
+        }
+        
+        // Add unique values to the type
+        variant.values.forEach(value => {
+          if (!variantsByType[typeName].includes(value)) {
+            variantsByType[typeName].push(value);
+          }
+        });
+      });
+      
+      // Add variant options and values
+      Object.entries(variantsByType).forEach(([typeName, values], index) => {
+        formData.append(`variant_option[]`, typeName);
+        formData.append(`variant_value[]`, values.join(','));
+      });
+      
+      // Generate all possible combinations
+      const variantTypes = Object.keys(variantsByType);
+      const variantValues = Object.values(variantsByType);
+      
+      // Generate all combinations of variant values
+      const generateCombinations = (
+        current: string[] = [],
+        depth: number = 0
+      ): string[][] => {
+        if (depth === variantTypes.length) {
+          return [current];
+        }
+        
+        let result: string[][] = [];
+        for (const value of variantValues[depth]) {
+          result = result.concat(
+            generateCombinations([...current, value], depth + 1)
+          );
+        }
+        
+        return result;
+      };
+      
+      const combinations = generateCombinations();
+      
+      // Add each combination as a variant
+      combinations.forEach((combo, index) => {
+        const variantName = combo.join('/');
+        const itemCode = `${variantName}-${payload.code}`;
+        
+        // Find if there's a matching variant with additional cost/price
+        let additionalCost = 0;
+        let additionalPrice = 0;
+        
+        // Try to find matching variant for pricing
+        for (const variant of product.variants) {
+          if (variant.values.some(v => combo.includes(v))) {
+            additionalCost += variant.additionalCost || 0;
+            additionalPrice += variant.additionalPrice || 0;
+          }
+        }
+        
+        formData.append(`variant_name[]`, variantName);
+        formData.append(`item_code[]`, itemCode);
+        formData.append(`additional_cost[]`, additionalCost.toString());
+        formData.append(`additional_price[]`, additionalPrice.toString());
+      });
+    }
+    
     // Append images
     if (imageUris && imageUris.length > 0) {
       imageUris.forEach((uri, index) => {
